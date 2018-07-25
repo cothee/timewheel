@@ -44,6 +44,7 @@ namespace mian {
     public:
       TimerList() {
         head_ = std::make_shared<Timer<Event>>();
+        tail_ = nullptr;
       }
     
       ~TimerList() {
@@ -52,7 +53,18 @@ namespace mian {
       void Push(std::shared_ptr<Event> item) {
         std::shared_ptr<Timer<Event>> ptr(new Timer<Event>(item));
         ptr->next_ = head_->next_;
+        if (!head_->next) {
+          tail = ptr;
+        }
         head_->next_ = ptr;
+      }
+
+      void Push(std::shared_ptr<TimerList> list) {
+          if (tail) {
+            tail->next_ = list->head_->next_;
+          } else {
+            head_->next_ = list_->head_->next_;
+          }
       }
 
       std::shared_ptr<Event> Pop() {
@@ -62,6 +74,9 @@ namespace mian {
         }
         head_->next_ = ptr->next_;
         std::shared_ptr<Event> event = ptr->ele_;
+        if (ptr == tail) {
+          tail = nullptr;
+        }
         ptr.reset();
         return event;
       }
@@ -73,10 +88,12 @@ namespace mian {
 
       void Clear() {
         head_->next_ = nullptr;
+        tail = nullptr;
       }
 
       private:
         std::shared_ptr<Timer<Event>> head_;
+        std::shared_ptr<Timer<Event>> tail_;
         TimerList(const TimerList& tl) = delete;
         void operator=(const TimerList& tl) = delete;
 
@@ -92,6 +109,7 @@ namespace mian {
       int Add(int fd, int ev_type, uint64_t relative_time);
 
       std::shared_ptr<Event> PopExpired();
+
       uint64_t GetMaxInterval() const {
         return (max_num_ - 1) * interval_;
       }
@@ -107,6 +125,7 @@ namespace mian {
       const uint32_t max_num_;
       const uint64_t interval_;  //the interval per tick
       std::vector<std::unique_ptr<TimerList>> wheel_;
+      std::shared_ptr<TimerList> to_add_;
       std::shared_ptr<TimerList> expired_;   //expired timeout list
 
       TimeWheel(const TimeWheel& t) = delete;
