@@ -11,7 +11,7 @@ TimeWheel::TimeWheel(const uint32_t max, const uint64_t interval):
     wheel_.reserve(max_num_);
     int num = max_num_;
     while (num-- > 0) {
-      wheel_.push_back(std::unique_ptr<TimerList>(new TimerList()));
+      wheel_.push_back(std::shared_ptr<TimerList>(new TimerList()));
     }
     to_add_ = std::shared_ptr<TimerList>(new TimerList());
     expired_ = std::shared_ptr<TimerList>(new TimerList());
@@ -30,35 +30,51 @@ int TimeWheel::Add(const std::shared_ptr<Event> event, const uint64_t relative_t
     return -1;// return false 
   }
 
-  int index = ((relative_time / interval_) + current_) % max_num_;
+  {
+    std::lock_guard<std::mutex> add_lock(add_mutex_);
+    to_add_->Push(event);
+  }
   //std::cout << "current: " << current_ << ", index:" << index << ", fd: " << event->fd_ << ", timeout:" << event->timeout_ << std::endl;
-  to_add_->Push(event);
   //wheel_[index]->Push(event);
   return 0;
 }
 
-/*step forward by one interval*/
-void Step() {
-  current_ = (current_ + 1) % max_num_;
+/*step forward by one interval, make sure it is called just by one thread*/
+void TimeWheel::Step() {
+  {
+    std::lock_guard<std::mutex> add_lock(add_mutex_);
 
-  std::shared_ptr<Timer<Event>> timer = to_do_->head_->next_;
-  int index = current_;
-  uint64_t timeout;
-  while (timer) {
-    timeout = timer->ele_->timeout_;
-    index = ((relative_time / interval_) + current_) % max_num_;
-    wheel_[index]->Push(event);
+    current_ = (current_ + 1) % max_num_;
 
-    timer = timer->next_;
+    std::shared_ptr<Timer<Event>> timer = to_add_->head_->next_;
+    std::shared_ptr<Timer<Event>> temp = nullptr;
+  
+    int index;
+    uint64_t timeout;
+    while (timer) {
+      timeout = timer->ele_->timeout_;
+      index = ((timeout / interval_) + current_) % max_num_;
+      temp = timer->next_;
+      
+      /*timer->next_ was changed by Push*/
+      wheel_[index]->Push(timer);
+      timer = temp;
+    }
+    to_add_->Clear();
   }
-  to_do_->Clear();
 
-  expired_->Push(wheel_[current_]);
-  wheel_[current]->Clear();
+  {
+    std::lock_guard<std::mutex> expired_lock(expired_mutex_);
+    expired_->Push(wheel_[current_]);
+    wheel_[current_]->Clear();
+  }
 }
 
 std::shared_ptr<Event> TimeWheel::PopExpired() {
-  return expired->Pop();
+  {
+    std::lock_guard<std::mutex> expired_lock(expired_mutex_);
+    return expired_->Pop();
+  }
 }
 
 }// namespace mian

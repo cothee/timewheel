@@ -24,7 +24,7 @@ void tick(){
   while(count < max) {
     while ((event = tw.PopExpired()) != nullptr) {
         count++;
-        std::cout << "Expired--count:" << count << " current:" << tw.current_ << ",fd:" << event->fd_ << ", timeout: " << event->timeout_ << std::endl;
+        std::cout << "Expired--count:" << count << " current:" << 0 << ",fd:" << event->fd_ << ", timeout: " << event->timeout_ << std::endl;
     }
     std::this_thread::sleep_for(std::chrono::seconds(tw.GetInterval()));
     tw.Step();
