@@ -84,7 +84,6 @@ namespace mian {
 
   class TimeWheel {
     public:
-      int current_; // current wheel index
       TimeWheel(uint32_t max_num, uint64_t interval = 1);
       ~TimeWheel();
 
@@ -104,10 +103,10 @@ namespace mian {
       }
 
     private:
+      int current_; // current wheel index
       const uint32_t max_num_;
       const uint64_t interval_;  //the interval per tick
       std::vector<std::unique_ptr<TimerList>> wheel_;
-      std::shared_ptr<TimerList> expired_;   //expired timeout list
 
       TimeWheel(const TimeWheel& t) = delete;
       void operator =(const TimeWheel& t) = delete;
