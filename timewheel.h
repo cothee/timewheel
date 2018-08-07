@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include <map>
 #include <atomic>
 
 #include <stdint.h>
@@ -30,12 +31,15 @@ namespace mian {
   struct Timer {
     std::shared_ptr<T> ele_;
     std::shared_ptr<Timer<T>> next_;
+    std::weak_ptr<Timer<T>> prev_;
 
-    Timer(): next_(nullptr),
-      ele_(nullptr){
+    Timer(): 
+      next_(nullptr),
+      ele_(nullptr) {
     }
 
-    explicit Timer(std::shared_ptr<T> ele): next_(nullptr),
+    explicit Timer(const std::shared_ptr<T>& ele): 
+      next_(nullptr),
       ele_(ele) {
     }
   };
@@ -49,10 +53,15 @@ namespace mian {
       ~TimerList() {
       }
 
-      void Push(std::shared_ptr<Event> item) {
+      std::shared_ptr<Timer<Event>> Push(std::shared_ptr<Event> item) {
         std::shared_ptr<Timer<Event>> ptr(new Timer<Event>(item));
         ptr->next_ = head_->next_;
+        if (head_->next_ != nullptr) {
+          head_->next_->prev_ = ptr;
+        }
+        ptr->prev_ = head_;
         head_->next_ = ptr;
+        return ptr;
       }
 
       std::shared_ptr<Event> Pop() {
@@ -61,6 +70,9 @@ namespace mian {
           return nullptr;
         }
         head_->next_ = ptr->next_;
+        if (ptr->next_ != nullptr) {
+          ptr->next_->prev_ = head_;
+        }
         std::shared_ptr<Event> event = ptr->ele_;
         ptr.reset();
         return event;
@@ -79,7 +91,6 @@ namespace mian {
         std::shared_ptr<Timer<Event>> head_;
         TimerList(const TimerList& tl) = delete;
         void operator=(const TimerList& tl) = delete;
-
   };
 
   class TimeWheel {
@@ -89,6 +100,8 @@ namespace mian {
 
       int Add(std::shared_ptr<Event> event, uint64_t relative_time);
       int Add(int fd, int ev_type, uint64_t relative_time);
+      int Remove(int fd);
+      int Remove(std::shared_ptr<Event> event);
 
       std::shared_ptr<Event> PopExpired();
       uint64_t GetMaxInterval() const {
@@ -98,7 +111,7 @@ namespace mian {
         return interval_;
       }
       /*step forward by one interval*/
-      void Step() {
+      void Tick() {
         current_ = (current_ + 1) % max_num_;
       }
 
@@ -107,6 +120,7 @@ namespace mian {
       const uint32_t max_num_;
       const uint64_t interval_;  //the interval per tick
       std::vector<std::unique_ptr<TimerList>> wheel_;
+      std::map<int, std::shared_ptr<Timer<Event>>> map_;
 
       TimeWheel(const TimeWheel& t) = delete;
       void operator =(const TimeWheel& t) = delete;

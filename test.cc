@@ -27,12 +27,13 @@ void tick(){
         std::cout << "Expired--count:" << count << ",fd:" << event->fd_ << ", timeout: " << event->timeout_ << std::endl;
     }
     std::this_thread::sleep_for(std::chrono::seconds(tw.GetInterval()));
-    tw.Step();
+    tw.Tick();
   }
 }
 
 int main() {
-  std::thread thread1(tick), thread2(AddTimer);
+  std::thread thread1(tick);
+  std::thread thread2(AddTimer);
   thread1.join();
   thread2.join();
 }
