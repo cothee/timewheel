@@ -6,21 +6,23 @@
 
 
 int max = 100;
-mian::TimeWheel tw(10,1);
+peanuts::TimeWheel tw(10,1);
 
 void AddTimer(){
   int i = 0;
   while (i < max) {
     srand((unsigned)time(NULL));
     tw.Add(i, rand() % 10 + 1);
+    tw.Remove(i - (rand() % 10 + 1));
     std::this_thread::sleep_for(std::chrono::seconds(rand() % 3 + 1));
+    //tw.Tick();
     i++;
   }
 }
 
 void tick(){
   int count = 0;
-  mian::Event event;
+  peanuts::Event event;
   while(count < max) {
     while ((tw.PopExpired(&event))) {
         count++;

@@ -1,5 +1,5 @@
-#ifndef MIAN_TIMEWHELL_INCLUDE_H_
-#define MIAN_TIMEWHELL_INCLUDE_H_
+#ifndef PEANUTS_TIMEWHELL_INCLUDE_H_
+#define PEANUTS_TIMEWHELL_INCLUDE_H_
 
 #include <vector>
 #include <memory>
@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-namespace mian {
+namespace peanuts {
   struct Event {
     int fd_;
     uint32_t timeout_;
@@ -124,7 +124,7 @@ namespace mian {
       void operator =(const TimeWheel& t) = delete;
   };
 
-}// namespace mian
+}// namespace peanuts
 
 
-#endif   //MIAN_TIMEWHEEL_INCLUDE_H_
+#endif   //PEANUTS_TIMEWHEEL_INCLUDE_H_

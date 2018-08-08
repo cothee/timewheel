@@ -1,7 +1,7 @@
 #include <iostream>
 #include "timewheel.h"
 
-namespace mian{
+namespace peanuts{
 
 TimeWheel::TimeWheel(const uint32_t max, const uint32_t interval):
     max_num_(max + 1),
@@ -28,7 +28,6 @@ int TimeWheel::Add(const Event& event) {
   }
 
   int index = ((event.timeout_ / interval_) + current_) % max_num_;
-  std::cout << "current: " << current_ << ", index:" << index << ", fd: " << event.fd_ << ", timeout:" << event.timeout_ << std::endl;
   map_[event.fd_] = wheel_[index]->Push(event);
   return 0;
 }
@@ -50,7 +49,9 @@ int TimeWheel::Remove(const int fd) {
     std::shared_ptr<Timer<Event>> ptr = map_[fd];
     if (ptr) {
       (ptr->prev_.lock())->next_ = ptr->next_;
-      ptr->next_->prev_ = ptr->prev_;
+      if (ptr->next_) {
+        ptr->next_->prev_ = ptr->prev_;
+      }
       map_[fd].reset();
       ptr.reset();
       return 0;
@@ -63,4 +64,4 @@ int TimeWheel::Remove(const Event& event) {
   return Remove(event.fd_);
 }
 
-}// namespace mian
+}// namespace peanuts
