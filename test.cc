@@ -12,7 +12,7 @@ void AddTimer(){
   int i = 0;
   while (i < max) {
     srand((unsigned)time(NULL));
-    tw.Add(i, 0x00,rand() % 10 + 1);
+    tw.Add(i, rand() % 10 + 1);
     std::this_thread::sleep_for(std::chrono::seconds(rand() % 3 + 1));
     i++;
   }
@@ -20,11 +20,11 @@ void AddTimer(){
 
 void tick(){
   int count = 0;
-  std::shared_ptr<mian::Event> event = nullptr;
+  mian::Event event;
   while(count < max) {
-    while ((event = tw.PopExpired()) != nullptr) {
+    while ((tw.PopExpired(&event))) {
         count++;
-        std::cout << "Expired--count:" << count << ",fd:" << event->fd_ << ", timeout: " << event->timeout_ << std::endl;
+        std::cout << "Expired--count:" << count << ",fd:" << event.fd_ << ", timeout: " << event.timeout_ << std::endl;
     }
     std::this_thread::sleep_for(std::chrono::seconds(tw.GetInterval()));
     tw.Tick();

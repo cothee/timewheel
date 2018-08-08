@@ -9,36 +9,32 @@
 #include <stdint.h>
 
 namespace mian {
-  enum EventType {
-    READ_EV = 0x00,
-    WRITE_EV = 0x01,
-    PERSIST_EV = 0x02
-  };
-
   struct Event {
     int fd_;
-    int ev_type_;
-    uint64_t timeout_;
+    uint32_t timeout_;
+    
+    Event():
+      fd_(-1),
+      timeout_(0) {
+    }
 
-    Event(int fd, int ev_type, uint64_t timeout):
+    Event(int fd, uint32_t timeout):
       fd_(fd),
-      ev_type_(ev_type),
       timeout_(timeout) {
     }
   };
 
   template <typename T>
   struct Timer {
-    std::shared_ptr<T> ele_;
+    T ele_;
     std::shared_ptr<Timer<T>> next_;
     std::weak_ptr<Timer<T>> prev_;
 
     Timer(): 
-      next_(nullptr),
-      ele_(nullptr) {
+      next_(nullptr) {
     }
 
-    explicit Timer(const std::shared_ptr<T>& ele): 
+    explicit Timer(const T& ele): 
       next_(nullptr),
       ele_(ele) {
     }
@@ -53,7 +49,7 @@ namespace mian {
       ~TimerList() {
       }
 
-      std::shared_ptr<Timer<Event>> Push(std::shared_ptr<Event> item) {
+      std::shared_ptr<Timer<Event>> Push(const Event& item) {
         std::shared_ptr<Timer<Event>> ptr(new Timer<Event>(item));
         ptr->next_ = head_->next_;
         if (head_->next_ != nullptr) {
@@ -64,23 +60,25 @@ namespace mian {
         return ptr;
       }
 
-      std::shared_ptr<Event> Pop() {
+      void Pop() {
         std::shared_ptr<Timer<Event>> ptr = head_->next_;
         if (!ptr) {
-          return nullptr;
+          return ;
         }
         head_->next_ = ptr->next_;
         if (ptr->next_ != nullptr) {
           ptr->next_->prev_ = head_;
         }
-        std::shared_ptr<Event> event = ptr->ele_;
         ptr.reset();
-        return event;
       }
 
-      std::shared_ptr<Event> Top() {
+      const Event& Top() const {
         std::shared_ptr<Timer<Event>> ptr = head_->next_;
-        return (ptr ? ptr->ele_ : nullptr);
+        return (ptr ? ptr->ele_ : head_->ele_);
+      }
+
+      bool Empty() const {
+        return head_->next_ == nullptr;
       }
 
       void Clear() {
@@ -95,15 +93,15 @@ namespace mian {
 
   class TimeWheel {
     public:
-      TimeWheel(uint32_t max_num, uint64_t interval = 1);
+      TimeWheel(uint32_t max_num, uint32_t interval = 1);
       ~TimeWheel();
 
-      int Add(std::shared_ptr<Event> event, uint64_t relative_time);
-      int Add(int fd, int ev_type, uint64_t relative_time);
+      int Add(const Event& event);
+      int Add(int fd, uint32_t relative_time);
       int Remove(int fd);
-      int Remove(std::shared_ptr<Event> event);
+      int Remove(const Event& event);
 
-      std::shared_ptr<Event> PopExpired();
+      bool PopExpired(Event* ev);
       uint64_t GetMaxInterval() const {
         return (max_num_ - 1) * interval_;
       }
