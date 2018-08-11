@@ -93,7 +93,7 @@ namespace peanuts {
 
   class TimeWheel {
     public:
-      TimeWheel(uint32_t max_num, uint32_t interval = 1);
+      TimeWheel(uint32_t max_num, uint64_t interval = 1);
       ~TimeWheel();
 
       int Add(const Event& event);
