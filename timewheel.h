@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <memory>
-#include <map>
-#include <atomic>
+#include <unordered_map>
+#include <mutex>
 
 #include <stdint.h>
 
@@ -35,8 +35,8 @@ namespace peanuts {
     }
 
     explicit Timer(const T& ele): 
-      next_(nullptr),
-      ele_(ele) {
+      ele_(ele),
+      next_(nullptr) {
     }
   };
 
@@ -114,11 +114,13 @@ namespace peanuts {
       }
 
     private:
-      int current_; // current wheel index
+      volatile int current_; // current wheel index
       const uint32_t max_num_;
       const uint64_t interval_;  //the interval per tick
       std::vector<std::unique_ptr<TimerList>> wheel_;
-      std::map<int, std::shared_ptr<Timer<Event>>> map_;
+      
+      std::mutex map_mtx_;
+      std::unordered_map<int, std::shared_ptr<Timer<Event>>> map_;
 
       TimeWheel(const TimeWheel& t) = delete;
       void operator =(const TimeWheel& t) = delete;

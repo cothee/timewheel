@@ -1,9 +1,10 @@
 #include <iostream>
+#include <utility>
 #include "timewheel.h"
 
 namespace peanuts{
 
-TimeWheel::TimeWheel(const uint32_t max, const uint32_t interval):
+TimeWheel::TimeWheel(const uint32_t max, const uint64_t interval):
     max_num_(max + 1),
     interval_(interval),
     current_(0) {
@@ -28,7 +29,10 @@ int TimeWheel::Add(const Event& event) {
   }
 
   int index = ((event.timeout_ / interval_) + current_) % max_num_;
-  map_[event.fd_] = wheel_[index]->Push(event);
+  {
+    std::lock_guard<std::mutex> lock(map_mtx_);
+    map_[event.fd_] = wheel_[index]->Push(event);
+  }
   return 0;
 }
 
@@ -44,21 +48,22 @@ bool TimeWheel::PopExpired(Event* ev) {
 }
 
 int TimeWheel::Remove(const int fd) {
-  //TODO need be optimized
-  if (map_.find(fd) != map_.end()) {
-    std::shared_ptr<Timer<Event>> ptr = map_[fd];
+  std::lock_guard<std::mutex> lock(map_mtx_);
+  std::unordered_map<int, std::shared_ptr<Timer<Event>>>::iterator it = map_.find(fd);
+  if (it != map_.end()) {
+    std::shared_ptr<Timer<Event>> ptr = std::move(it->second);
     if (ptr) {
       (ptr->prev_.lock())->next_ = ptr->next_;
       if (ptr->next_) {
         ptr->next_->prev_ = ptr->prev_;
       }
-      map_[fd].reset();
       ptr.reset();
       return 0;
     }
   }
   return -1;
 }
+
 
 int TimeWheel::Remove(const Event& event) {
   return Remove(event.fd_);
